@@ -1,1 +1,23 @@
-
+{
+  "name": "rahayu-crypto-toolkit",
+  "version": "1.0.0",
+  "description": "A toolkit for managing cryptocurrency operations",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "mocha test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ebetap/rahayu-crypto-toolkit.git"
+  },
+  "keywords": ["crypto", "cryptocurrency", "toolkit"],
+  "author": "Priyoko Beta",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^0.21.1"
+  },
+  "devDependencies": {
+    "mocha": "^8.3.2",
+    "chai": "^4.3.4"
+  }
+}
