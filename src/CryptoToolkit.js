@@ -19,12 +19,12 @@ class CryptoToolkit {
   async getPortfolioValue(walletAddresses) {
     try {
       const responses = await Promise.all(walletAddresses.map(address =>
-        this.axiosInstance.get(`${this.apiBase.blockchainExplorer}/address/${address}/balance`)
+        this.fetchAddressBalance(address)
       ));
       const values = responses.map(response => response.data.balance);
       return values.reduce((acc, val) => acc + val, 0);
     } catch (error) {
-      console.error('Error fetching portfolio value:', error.message);
+      this.logError('fetching portfolio value', error);
       throw new Error('Failed to fetch portfolio value');
     }
   }
@@ -36,7 +36,7 @@ class CryptoToolkit {
       });
       return response.data;
     } catch (error) {
-      console.error('Error fetching real-time prices:', error.message);
+      this.logError('fetching real-time prices', error);
       throw new Error('Failed to fetch real-time prices');
     }
   }
@@ -53,94 +53,109 @@ class CryptoToolkit {
       const transaction = this.signTransaction(fromAddress, toAddress, amount);
       return await this.sendTransaction(transaction);
     } catch (error) {
-      console.error('Error sending crypto:', error.message);
+      this.logError('sending crypto', error);
       throw new Error('Failed to send crypto');
     }
   }
 
   // Payment Gateway Methods
   async processPayment(fromAddress, toAddress, amount) {
+    this.validateAddresses(fromAddress, toAddress);
+    this.validateAmount(amount);
+
     try {
       const response = await this.axiosInstance.post(`${this.apiBase.paymentGateway}/process`, {
         fromAddress, toAddress, amount
       });
       return response.data;
     } catch (error) {
-      console.error('Error processing payment:', error.message);
+      this.logError('processing payment', error);
       throw new Error('Failed to process payment');
     }
   }
 
   async convertToFiat(crypto, amount) {
+    this.validateAmount(amount);
+
     try {
       const response = await this.axiosInstance.get(`${this.apiBase.prices}/convert`, {
         params: { crypto, amount }
       });
       return response.data;
     } catch (error) {
-      console.error('Error converting to fiat:', error.message);
+      this.logError('converting to fiat', error);
       throw new Error('Failed to convert to fiat');
     }
   }
 
   // Decentralized Exchange Methods
   async swap(fromToken, toToken, amount) {
+    this.validateAmount(amount);
+
     try {
       const response = await this.axiosInstance.post(`${this.apiBase.blockchainExplorer}/swap`, {
         fromToken, toToken, amount
       });
       return response.data;
     } catch (error) {
-      console.error('Error swapping tokens:', error.message);
+      this.logError('swapping tokens', error);
       throw new Error('Failed to swap tokens');
     }
   }
 
   async addLiquidity(token, amount) {
+    this.validateAmount(amount);
+
     try {
       const response = await this.axiosInstance.post(`${this.apiBase.blockchainExplorer}/liquidity/add`, {
         token, amount
       });
       return response.data;
     } catch (error) {
-      console.error('Error adding liquidity:', error.message);
+      this.logError('adding liquidity', error);
       throw new Error('Failed to add liquidity');
     }
   }
 
   async removeLiquidity(token, amount) {
+    this.validateAmount(amount);
+
     try {
       const response = await this.axiosInstance.post(`${this.apiBase.blockchainExplorer}/liquidity/remove`, {
         token, amount
       });
       return response.data;
     } catch (error) {
-      console.error('Error removing liquidity:', error.message);
+      this.logError('removing liquidity', error);
       throw new Error('Failed to remove liquidity');
     }
   }
 
   // Lending and Borrowing Methods
   async lend(crypto, amount) {
+    this.validateAmount(amount);
+
     try {
       const response = await this.axiosInstance.post(`${this.apiBase.blockchainExplorer}/lend`, {
         crypto, amount
       });
       return response.data;
     } catch (error) {
-      console.error('Error lending crypto:', error.message);
+      this.logError('lending crypto', error);
       throw new Error('Failed to lend crypto');
     }
   }
 
   async borrow(crypto, amount, collateral) {
+    this.validateAmount(amount);
+
     try {
       const response = await this.axiosInstance.post(`${this.apiBase.blockchainExplorer}/borrow`, {
         crypto, amount, collateral
       });
       return response.data;
     } catch (error) {
-      console.error('Error borrowing crypto:', error.message);
+      this.logError('borrowing crypto', error);
       throw new Error('Failed to borrow crypto');
     }
   }
@@ -150,7 +165,7 @@ class CryptoToolkit {
       const response = await this.axiosInstance.get(`${this.apiBase.blockchainExplorer}/rates`);
       return response.data;
     } catch (error) {
-      console.error('Error fetching interest rates:', error.message);
+      this.logError('fetching interest rates', error);
       throw new Error('Failed to fetch interest rates');
     }
   }
@@ -161,19 +176,13 @@ class CryptoToolkit {
       const response = await this.axiosInstance.get(`${this.apiBase.blockchainExplorer}/transaction/${txHash}`);
       return response.data;
     } catch (error) {
-      console.error('Error fetching transaction details:', error.message);
+      this.logError('fetching transaction details', error);
       throw new Error('Failed to fetch transaction details');
     }
   }
 
   async getAddressBalance(address) {
-    try {
-      const response = await this.axiosInstance.get(`${this.apiBase.blockchainExplorer}/address/${address}/balance`);
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching address balance:', error.message);
-      throw new Error('Failed to fetch address balance');
-    }
+    return await this.fetchAddressBalance(address);
   }
 
   // Utilities
@@ -207,9 +216,37 @@ class CryptoToolkit {
       const response = await this.axiosInstance.post(`${this.apiBase.blockchainExplorer}/transaction/send`, transaction);
       return response.data;
     } catch (error) {
-      console.error('Error sending transaction:', error.message);
+      this.logError('sending transaction', error);
       throw new Error('Failed to send transaction');
     }
+  }
+
+  async fetchAddressBalance(address) {
+    try {
+      const response = await this.axiosInstance.get(`${this.apiBase.blockchainExplorer}/address/${address}/balance`);
+      return response.data;
+    } catch (error) {
+      this.logError('fetching address balance', error);
+      throw new Error('Failed to fetch address balance');
+    }
+  }
+
+  validateAddresses(...addresses) {
+    addresses.forEach(address => {
+      if (!address || typeof address !== 'string') {
+        throw new Error('Invalid address');
+      }
+    });
+  }
+
+  validateAmount(amount) {
+    if (typeof amount !== 'number' || amount <= 0) {
+      throw new Error('Invalid amount');
+    }
+  }
+
+  logError(action, error) {
+    console.error(`Error ${action}:`, error.message);
   }
 }
 
